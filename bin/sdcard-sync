@@ -1,0 +1,22 @@
+#!/bin/sh
+# Startet sdcard-sync direkt aus dem Projekt, ohne Installation.
+set -e
+
+SELF="$0"
+while [ -L "$SELF" ]; do
+    DIR=$(cd -P "$(dirname "$SELF")" && pwd)
+    SELF=$(readlink "$SELF")
+    case "$SELF" in
+        /*) ;;
+        *) SELF="$DIR/$SELF" ;;
+    esac
+done
+PROJECT=$(cd -P "$(dirname "$SELF")/.." && pwd)
+
+if [ -x "$PROJECT/.venv/bin/python" ]; then
+    PY="$PROJECT/.venv/bin/python"
+else
+    PY="python3"
+fi
+
+PYTHONPATH="$PROJECT/src${PYTHONPATH:+:$PYTHONPATH}" exec "$PY" -m sdcard_sync "$@"
