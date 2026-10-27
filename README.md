@@ -61,7 +61,8 @@ adb devices
 ### Running from the project
 
 ```bash
-cd ~/PycharmProjects/sdcard-sync
+git clone https://github.com/rindPHI/sdcard-sync.git
+cd sdcard-sync
 python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 .venv/bin/sdcard-sync --help
@@ -73,14 +74,14 @@ The repository contains `bin/sdcard-sync`, which runs the package from the
 checkout without installing it:
 
 ```bash
-~/PycharmProjects/sdcard-sync/bin/sdcard-sync --help
+./bin/sdcard-sync --help
 ```
 
 To make the command available everywhere, link it into a directory on your
-`PATH`:
+`PATH`, for example `~/.local/bin`:
 
 ```bash
-ln -sf ~/PycharmProjects/sdcard-sync/bin/sdcard-sync ~/bin/sdcard-sync
+ln -sf "$PWD/bin/sdcard-sync" ~/.local/bin/sdcard-sync
 ```
 
 The wrapper uses `.venv/bin/python` when the virtual environment exists and
@@ -93,7 +94,7 @@ path can point at the wrong backup after a while.
 
 ```bash
 # Target is detected automatically, then confirmed
-sdcard-sync --source "/Users/me/Pictures/2026-10-23 SD Card Backup"
+sdcard-sync --source "~/Pictures/2026-10-23 SD Card Backup"
 
 # Show what would be transferred
 sdcard-sync --source "…" --dry-run
@@ -177,7 +178,7 @@ sdcard-sync/
 ## Tests
 
 ```bash
-cd ~/PycharmProjects/sdcard-sync
+cd sdcard-sync
 .venv/bin/python -m pytest
 ```
 
