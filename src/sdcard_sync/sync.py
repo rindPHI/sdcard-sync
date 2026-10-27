@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dominic Steinhöfel
 """Vergleichs- und Planungslogik, unabhängig von adb und vom Dateisystem."""
 
 from __future__ import annotations

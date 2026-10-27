@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dominic Steinhöfel
 import pytest
 
 from sdcard_sync.cli import build_parser, confirm

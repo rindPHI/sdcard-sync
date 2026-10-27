@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dominic Steinhöfel
 """Dünne Hülle um die adb-Kommandozeile.
 
 Die Klasse :class:`Adb` kapselt alle Aufrufe des Android Debug Bridge, damit

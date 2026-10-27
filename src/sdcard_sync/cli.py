@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dominic Steinhöfel
 """Kommandozeilenschnittstelle für sdcard-sync."""
 
 from __future__ import annotations

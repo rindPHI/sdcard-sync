@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,8 +8,9 @@ version = "1.0.0"
 description = "Gleicht einen lokalen Ordner mit der SD-Karte eines Android-Geräts ab (über adb)"
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "MIT" }
-authors = [{ name = "Dominic Steinhoefel" }]
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Dominic Steinhöfel" }]
 keywords = ["android", "adb", "sdcard", "backup", "sync"]
 classifiers = [
     "Environment :: Console",

@@ -186,4 +186,4 @@ benötigen kein angeschlossenes Gerät.
 
 ## Lizenz
 
-MIT – siehe [LICENSE](LICENSE).
+MIT – siehe [LICENSE](LICENSE). SPDX-Kennung: `MIT`, Copyright (c) 2026 Dominic Steinhöfel.
