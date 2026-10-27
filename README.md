@@ -1,53 +1,55 @@
 # sdcard-sync
 
-Gleicht einen lokalen Ordner (z. B. eine Handy-Sicherung) mit der SD-Karte
-eines Android-Geräts ab – über `adb`, nicht über MTP.
+Synchronizes a local directory, for example a phone backup, with the SD card
+in an Android device. The transfer runs over `adb`.
 
-Das Werkzeug vergleicht **Dateipfad und Dateigröße**, legt fehlende Ordner an
-und überträgt ausschließlich die Differenz. Es ist idempotent: Ein zweiter
-Lauf kopiert nur, was neu oder geändert ist.
+The tool compares every file by relative path and size, creates missing
+directories, and copies only what differs. A second run transfers new or
+changed files and leaves everything else alone.
 
 ```
-=== Ziel prüfen ===
-  Gerät:      Fairphone FP5
-  Zielpfad:   /storage/7EDF-B83A
-  Frei:       349.2 GB
-  Schreiben:  42 Dateien / 3.15 GB
-  Hinweis:    vorhandene Dateien mit gleicher Größe werden NICHT angefasst.
+=== Target check ===
+  Device:      Fairphone FP5
+  Target:      /storage/7EDF-B83A
+  Free space:  349.2 GB
+  To write:    42 files / 3.15 GB
+  Note:        existing files with the same size are left untouched.
 
-Auf dieses Ziel schreiben? [ja/nein]
+Write to this target? [yes/no]
 ```
 
-## Warum adb statt MTP?
+## Why adb instead of MTP
 
-MTP ist auf macOS langsam und bei vielen kleinen Dateien unzuverlässig
-(realistisch 2–3 MB/s, hoher Overhead pro Datei). `adb push` erreicht auf
-demselben Gerät 13–37 MB/s und bricht nicht bei jeder Kleinigkeit ab.
-Details: [docs/entscheidungen.md](docs/entscheidungen.md).
+MTP on macOS was slow and unstable for this workload. In a test with 16,857
+files and 135.6 GB, OpenMTP/libmtp reached about 2.3 MB/s, which projected to
+roughly 15 hours. An interrupted transfer also left the MTP session stuck
+until the phone was unplugged and reconnected.
 
-## Voraussetzungen
+`adb push` on the same device reached 36.8 MB/s for large files and 13.5 MB/s
+across the full set, finishing in 2 h 48 min. The details are in
+[docs/decisions.md](docs/decisions.md).
 
-| Was | Warum |
-|---|---|
-| Python ≥ 3.9 | Laufzeit (nur Standardbibliothek) |
-| `adb` (Android Platform Tools) | Datentransfer |
-| USB-Debugging am Handy | Voraussetzung für adb |
-| Kabelverbindung | – |
+## Requirements
 
-`adb` installieren:
+- Python 3.9 or newer (standard library only)
+- `adb` from the Android Platform Tools
+- USB debugging enabled on the phone
+- A USB cable
+
+Install `adb`:
 
 ```bash
 brew install --cask android-platform-tools
 ```
 
-USB-Debugging aktivieren (Fairphone/Android):
+Enable USB debugging on the phone:
 
-1. Einstellungen → Über das Telefon → 7× auf „Build-Nummer" tippen
-2. Einstellungen → System → Entwickleroptionen → „USB-Debugging" einschalten
-3. Kabel anstecken, USB-Modus „Dateien übertragen" wählen
-4. Meldung „USB-Debugging zulassen?" bestätigen
+1. Settings → About phone → tap "Build number" seven times
+2. Settings → System → Developer options → enable "USB debugging"
+3. Connect the cable and choose "File transfer" as the USB mode
+4. Confirm "Allow USB debugging?" on the phone
 
-Prüfen:
+Check the connection:
 
 ```bash
 adb devices
@@ -56,7 +58,7 @@ adb devices
 
 ## Installation
 
-### Variante A: lokal im Projekt (empfohlen für Entwicklung)
+### Running from the project
 
 ```bash
 cd ~/PycharmProjects/sdcard-sync
@@ -65,97 +67,106 @@ python3 -m venv .venv
 .venv/bin/sdcard-sync --help
 ```
 
-### Variante B: als Kommando im PATH
+### Running through the wrapper
 
-Im Projekt liegt ein Wrapper, der ohne Installation funktioniert:
+The repository contains `bin/sdcard-sync`, which runs the package from the
+checkout without installing it:
 
 ```bash
 ~/PycharmProjects/sdcard-sync/bin/sdcard-sync --help
 ```
 
-Für den globalen Aufruf `sdcard-sync` genügt ein Symlink:
+To make the command available everywhere, link it into a directory on your
+`PATH`:
 
 ```bash
 ln -sf ~/PycharmProjects/sdcard-sync/bin/sdcard-sync ~/bin/sdcard-sync
 ```
 
-## Benutzung
+The wrapper uses `.venv/bin/python` when the virtual environment exists and
+falls back to `python3` otherwise.
 
-Die Quelle ist **Pflicht** – es gibt bewusst keinen Standardordner.
+## Usage
+
+`--source` is required. There is no default directory, because a hardcoded
+path can point at the wrong backup after a while.
 
 ```bash
-# Ziel wird automatisch als SD-Karte erkannt, danach Bestätigung
-sdcard-sync --source "/Users/dsteinhoefel/Pictures/2026-10-23 SD Card Backup"
+# Target is detected automatically, then confirmed
+sdcard-sync --source "/Users/me/Pictures/2026-10-23 SD Card Backup"
 
-# Nur anzeigen, was übertragen würde
+# Show what would be transferred
 sdcard-sync --source "…" --dry-run
 
-# Ziel manuell vorgeben (Bestätigung bleibt trotzdem)
+# Pin the target explicitly (confirmation still applies)
 sdcard-sync --source "…" --remote /storage/7EDF-B83A
 
-# Bestätigung überspringen (nur für Automatisierung)
+# Skip confirmation for automation
 sdcard-sync --source "…" --yes
 ```
 
-### Optionen
+### Options
 
-| Option | Bedeutung |
+| Option | Description |
 |---|---|
-| `--source PFAD` | Quellordner (Pflicht) |
-| `--remote PFAD` | Zielpfad; sonst automatische Erkennung der SD-Karte |
-| `--dry-run` | Nur Diff anzeigen, nichts schreiben |
-| `--yes` | Bestätigung überspringen |
-| `--batch-files N` | Max. Dateien pro adb-Aufruf (Standard: 120) |
-| `--batch-mb N` | Max. Paketgröße in MB (Standard: 2048) |
+| `--source PATH` | Source directory (required) |
+| `--remote PATH` | Target path; otherwise the SD card is detected |
+| `--dry-run` | Print the difference without writing |
+| `--yes` | Skip the confirmation prompt |
+| `--batch-files N` | Maximum files per `adb push` call (default: 120) |
+| `--batch-mb N` | Maximum batch size in MB (default: 2048) |
 
-### Ablauf
+### Run sequence
 
-1. Gerät prüfen (`adb devices`)
-2. Ziel bestimmen (automatisch oder `--remote`)
-3. SD-Karte einlesen (Dateien + Größen)
-4. Lokalen Ordner scannen
-5. Differenz bilden
-6. Ziel, Gerät, freien Speicher und Umfang anzeigen
-7. **Bestätigung abwarten**
-8. Fehlende Ordner anlegen, Dateien paketweise übertragen
-9. Abschließend erneut vergleichen und Restmenge melden
+1. Check that `adb devices` reports a ready device
+2. Resolve the target, either from `--remote` or from `/storage`
+3. Read the SD card: relative paths and file sizes
+4. Scan the source directory
+5. Compute the difference
+6. Print device, target, free space and transfer volume
+7. Wait for confirmation
+8. Create missing directories and push the files in batches
+9. Read the card again and report what is left
 
-## Sicherheitsverhalten
+## Safety behaviour
 
-- **Es wird nie gelöscht.** Dateien auf dem Ziel bleiben unangetastet, auch
-  wenn sie lokal nicht existieren.
-- Überschrieben wird nur, wenn eine Datei am selben Pfad eine **andere
-  Größe** hat.
-- Reicht der freie Speicher nicht, bricht das Programm vor dem ersten
-  Schreibzugriff ab.
-- Ohne ausdrückliches `ja` (oder `--yes`) wird nichts geschrieben.
-- Bei Abbruch/Verbindungsverlust: einfach erneut starten, der nächste Lauf
-  überträgt nur die Restmenge.
+The tool never deletes files. Entries that exist only on the SD card stay
+where they are.
+
+A file is overwritten only when the path exists with a different size. Files
+with matching size are skipped.
+
+If the target does not have enough free space, the run stops before the first
+write. Without an explicit `yes` or `--yes`, nothing is written at all.
+
+There is no state file on disk. After an interruption or a disconnected
+cable, run the same command again and the difference is recalculated from the
+actual file listings.
 
 ## Log
 
-Alle Läufe werden zusätzlich protokolliert:
+Each run also writes to:
 
 ```
 ~/Library/Logs/sdcard-sync.log
 ```
 
-## Projektstruktur
+## Project layout
 
 ```
 sdcard-sync/
 ├── bin/
-│   └── sdcard-sync          # Wrapper ohne Installation
+│   └── sdcard-sync          # wrapper, no installation required
 ├── docs/
-│   ├── entscheidungen.md    # Warum adb statt MTP
-│   ├── funktionsweise.md    # Interner Ablauf, Vergleichslogik
-│   └── troubleshooting.md   # Typische Fehler und Lösungen
+│   ├── decisions.md         # adb versus MTP, design choices
+│   ├── how-it-works.md      # scan, diff, batching, verification
+│   └── troubleshooting.md   # common errors and fixes
 ├── src/sdcard_sync/
 │   ├── __init__.py
 │   ├── __main__.py          # python -m sdcard_sync
-│   ├── adb.py               # Kapselung der adb-Aufrufe
-│   ├── cli.py               # Argumente, Bestätigung, Ablaufsteuerung
-│   └── sync.py              # Scan, Diff, Paketplanung (ohne I/O)
+│   ├── adb.py               # adb command wrapper
+│   ├── cli.py               # arguments, confirmation, orchestration
+│   └── sync.py              # scan, diff, batch planning (no I/O)
 ├── tests/
 │   ├── test_cli.py
 │   └── test_sync.py
@@ -170,20 +181,31 @@ cd ~/PycharmProjects/sdcard-sync
 .venv/bin/python -m pytest
 ```
 
-Die Tests decken Scan, Diff, Paketbildung und die Bestätigungslogik ab; sie
-benötigen kein angeschlossenes Gerät.
+The tests cover scanning, the diff, batch planning and the confirmation
+logic. They do not need a connected device.
 
-## Grenzen
+## Limitations
 
-- Verglichen wird **Größe + Pfad**, keine Prüfsumme. Das ist für den
-  Massenabgleich schnell genug; für Integritätsprüfungen einzelner Dateien
-  gibt es `adb shell md5sum`.
-- Ausgeschlossen werden `.DS_Store` und `.Trashes`.
-- Zwei Dateien mit gleichem Namen und gleicher Größe, aber unterschiedlichem
-  Inhalt werden nicht erkannt.
-- Der Zielpfad muss beschreibbar sein; `Android/data` ist je nach
-  Android-Version eingeschränkt.
+The comparison uses path and size. It does not hash file contents, which
+keeps a 135 GB run within a reasonable time. Two files with the same name and
+the same size but different content are treated as identical.
 
-## Lizenz
+Renamed files are copied under their new name; the old copy stays on the
+card.
 
-MIT – siehe [LICENSE](LICENSE). SPDX-Kennung: `MIT`, Copyright (c) 2026 Dominic Steinhöfel.
+`.DS_Store` and `.Trashes` are skipped.
+
+Write access to `Android/data` depends on the Android version and may be
+denied for some applications.
+
+For a one-off integrity check of an individual file:
+
+```bash
+md5 -q local/photo.jpg
+adb shell md5sum /storage/XXXX-XXXX/path/photo.jpg
+```
+
+## License
+
+MIT, see [LICENSE](LICENSE). SPDX identifier: `MIT`. Copyright (c) 2026
+Dominic Steinhöfel.

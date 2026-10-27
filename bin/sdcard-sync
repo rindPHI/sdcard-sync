@@ -1,7 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Dominic Steinhöfel
-# Startet sdcard-sync direkt aus dem Projekt, ohne Installation.
+# Runs sdcard-sync from the checkout without installing the package.
 set -e
 
 SELF="$0"

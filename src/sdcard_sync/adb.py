@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Dominic Steinhöfel
-"""Dünne Hülle um die adb-Kommandozeile.
+"""Thin wrapper around the adb command line client.
 
-Die Klasse :class:`Adb` kapselt alle Aufrufe des Android Debug Bridge, damit
-der Rest des Programms ohne ``subprocess``-Details arbeiten kann.
+:class:`Adb` keeps all ``subprocess`` details in one place so the rest of the
+program works with plain Python values.
 """
 
 from __future__ import annotations
@@ -12,21 +12,21 @@ import shlex
 import subprocess
 
 NO_DEVICE_HINT = (
-    "Kein Android-Gerät gefunden.\n"
-    "  1. Handy entsperren\n"
-    "  2. USB-Modus 'Dateien übertragen' wählen\n"
-    "  3. USB-Debugging aktivieren (Entwickleroptionen)\n"
-    "  4. 'USB-Debugging zulassen?' am Handy bestätigen\n"
-    "Danach: adb devices"
+    "No Android device found.\n"
+    "  1. Unlock the phone\n"
+    "  2. Choose 'File transfer' as the USB mode\n"
+    "  3. Enable USB debugging (Developer options)\n"
+    "  4. Confirm 'Allow USB debugging?' on the phone\n"
+    "Then check: adb devices"
 )
 
 
 class AdbError(RuntimeError):
-    """Fehler bei der Kommunikation mit adb oder dem Gerät."""
+    """Raised when adb or the device reports a problem."""
 
 
 class Adb:
-    """Kapselt adb-Aufrufe für ein einzelnes Gerät."""
+    """Runs adb commands against a single connected device."""
 
     def __init__(self, executable: str = "adb", default_timeout: int = 7200) -> None:
         self.executable = executable
@@ -48,39 +48,39 @@ class Adb:
             )
         except FileNotFoundError as exc:
             raise AdbError(
-                "adb nicht gefunden. Installation: brew install --cask android-platform-tools"
+                "adb not found. Install it with: brew install --cask android-platform-tools"
             ) from exc
         except subprocess.TimeoutExpired as exc:
-            raise AdbError(f"adb {' '.join(args[:2])}: Zeitüberschreitung") from exc
+            raise AdbError(f"adb {' '.join(args[:2])} timed out") from exc
 
         if check and proc.returncode != 0:
             message = proc.stderr.strip() or proc.stdout.strip()
-            raise AdbError(f"adb {' '.join(args[:2])} fehlgeschlagen: {message}")
+            raise AdbError(f"adb {' '.join(args[:2])} failed: {message}")
         return proc
 
     def require_device(self) -> None:
-        """Bricht mit verständlicher Meldung ab, wenn kein Gerät bereit ist."""
+        """Raise :class:`AdbError` with setup instructions if no device is ready."""
         output = self.run("devices", check=False).stdout
         if "\tdevice" not in output:
             raise AdbError(NO_DEVICE_HINT)
 
     def device_label(self) -> str:
-        """Menschenlesbare Gerätebezeichnung, z. B. ``Fairphone FP5``."""
+        """Human readable device name, for example ``Fairphone FP5``."""
         parts = self.run(
             "shell", "getprop ro.product.manufacturer; getprop ro.product.model", check=False
         ).stdout.splitlines()
         return " ".join(part.strip() for part in parts if part.strip())
 
     def detect_external_storage(self) -> str:
-        """Ermittelt den Einhängepunkt der externen SD-Karte."""
+        """Return the mount point of the external SD card."""
         names = self.run("shell", "ls /storage").stdout.split()
         for name in names:
             if name not in ("emulated", "self"):
                 return "/storage/" + name
-        raise AdbError("Keine echte SD-Karte gefunden (nur interner Speicher).")
+        raise AdbError("No external SD card found (internal storage only).")
 
     def free_space(self, remote_path: str) -> int | None:
-        """Freier Speicher in Bytes, ``None`` wenn nicht ermittelbar."""
+        """Free space in bytes, or ``None`` when it cannot be determined."""
         proc = self.run("shell", f"df -k {shlex.quote(remote_path)} | tail -1", check=False)
         fields = proc.stdout.split()
         try:
@@ -89,7 +89,7 @@ class Adb:
             return None
 
     def list_files(self, remote_path: str) -> dict[str, int]:
-        """Alle Dateien unterhalb von *remote_path* als ``{relativer Pfad: Größe}``."""
+        """All files below *remote_path* as ``{relative path: size}``."""
         cmd = (
             f"cd {shlex.quote(remote_path)} && "
             f"find . -type f -exec stat -c '%s %n' {{}} +"
@@ -106,7 +106,7 @@ class Adb:
         return files
 
     def list_dirs(self, remote_path: str) -> set[str]:
-        """Alle Ordner unterhalb von *remote_path* (relativ)."""
+        """All directories below *remote_path*, relative to it."""
         proc = self.run("shell", f"cd {shlex.quote(remote_path)} && find . -type d", timeout=1800)
         dirs: set[str] = set()
         for line in proc.stdout.splitlines():
@@ -118,7 +118,7 @@ class Adb:
         return dirs
 
     def make_dirs(self, remote_path: str, relative_dirs: list[str], chunk_size: int = 60) -> None:
-        """Legt fehlende Ordner an (gebündelt, um adb-Aufrufe zu sparen)."""
+        """Create missing directories, bundled to reduce adb calls."""
         for start in range(0, len(relative_dirs), chunk_size):
             chunk = relative_dirs[start : start + chunk_size]
             command = " && ".join(
@@ -127,7 +127,7 @@ class Adb:
             self.run("shell", command, timeout=600)
 
     def push(self, local_paths: list[str], remote_dir: str, timeout: int = 7200) -> None:
-        """Kopiert Dateien in einen Ordner auf dem Gerät."""
+        """Copy files into a directory on the device."""
         self.run("push", *local_paths, remote_dir.rstrip("/") + "/", timeout=timeout)
 
     def wait_for_device(self) -> None:

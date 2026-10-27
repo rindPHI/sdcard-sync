@@ -1,77 +1,85 @@
 # Troubleshooting
 
-## „Kein Android-Gerät gefunden"
+## "No Android device found"
 
 ```
 adb devices
 ```
 
-| Ausgabe | Ursache | Lösung |
+| Output | Cause | Fix |
 |---|---|---|
-| leer | Kabel, Modus oder Debugging | Kabel prüfen, USB-Modus „Dateien übertragen", USB-Debugging an |
-| `unauthorized` | Bestätigung am Handy fehlt | Handy entsperren, „USB-Debugging zulassen?" bestätigen |
-| `offline` | Verbindung hängt | Kabel ab/anstecken, `adb kill-server && adb start-server` |
+| empty | cable, USB mode or debugging | check the cable, choose "File transfer", enable USB debugging |
+| `unauthorized` | the phone has not confirmed the key | unlock the phone and accept "Allow USB debugging?" |
+| `offline` | the connection is stuck | unplug and replug, then `adb kill-server && adb start-server` |
 
-Häufig hilft auch: anderen USB-Port bzw. direkt am Mac statt am Hub testen.
+A different USB port often helps. Ports on a monitor or dock are a common
+source of trouble.
 
-## „Keine echte SD-Karte gefunden"
+## "No external SD card found"
 
-`adb shell ls /storage` zeigt nur `emulated` und `self`. Dann ist die
-SD-Karte nicht eingelegt oder nicht eingebunden. Prüfen:
+`adb shell ls /storage` shows only `emulated` and `self`. The card is missing
+or not mounted. Check with:
 
 ```bash
 adb shell sm list-volumes
 adb shell ls /storage
 ```
 
-Ziel alternativ explizit angeben:
+Alternatively pass the target explicitly:
 
 ```bash
 sdcard-sync --source "…" --remote /storage/XXXX-XXXX
 ```
 
-## „Permission denied" beim Schreiben
+## "Permission denied" while writing
 
-- Zielpfad prüfen (Tippfehler, interner statt externer Speicher).
-- `Android/data` ist ab Android 11 teils gesperrt. Betroffene Ordner werden
-  als fehlgeschlagen gemeldet, der Rest läuft weiter.
-- SD-Karte ggf. am Handy neu einbinden (Einstellungen → Speicher).
+Check the target path for typos and make sure it points at the removable
+volume, not internal storage.
 
-## Übertragung bricht ab
+`Android/data` is restricted on Android 11 and newer for some applications.
+Affected files are reported as failed batches and the rest of the run
+continues.
 
-Einfach erneut starten:
+Remounting the card on the phone (Settings → Storage) resolves some mount
+problems.
+
+## The transfer stops midway
+
+Run the same command again:
 
 ```bash
 sdcard-sync --source "…"
 ```
 
-Es wird nur die Differenz übertragen. Bereits kopierte Dateien werden
-übersprungen.
+Only the difference is transferred. Files that were already copied are
+skipped.
 
-## Sehr langsam
+## The transfer is slow
 
-- USB-Hub oder Monitor-Dock vermeiden, direkt am Mac anstecken.
-- Große Dateien laufen mit ~35 MB/s, viele kleine Dateien deutlich langsamer
-  (Protokoll-Overhead pro Datei). Das ist normal.
-- `--batch-files` erhöhen (z. B. 250) reduziert die Anzahl der adb-Aufrufe.
+Connect the phone directly to the Mac instead of through a hub or dock.
 
-## „Keine interaktive Eingabe möglich"
+Large files run at roughly 35 MB/s. Many small files are much slower because
+of the per-file protocol overhead.
 
-Das Skript läuft ohne Terminal (z. B. aus einem Cronjob). Entweder
-interaktiv starten oder bewusst bestätigen:
+Raising `--batch-files`, for example to 250, reduces the number of adb calls.
+
+## "No interactive input available"
+
+The program runs without a terminal, for example from a cron job. Either run
+it interactively or confirm deliberately:
 
 ```bash
 sdcard-sync --source "…" --yes
 ```
 
-## Nach dem Lauf: „Noch offen: N Dateien"
+## "Remaining: N files" after a run
 
-- Fehlgeschlagene Pakete werden erneut versucht, wenn man das Programm
-  nochmals startet.
-- Bei `Android/data` kann es dauerhaft an Berechtigungen scheitern.
-- Log prüfen: `~/Library/Logs/sdcard-sync.log`
+Failed batches are retried on the next start.
 
-## Log ansehen
+`Android/data` may fail permanently because of the permission restrictions
+described above.
+
+Check the log for details:
 
 ```bash
 tail -n 50 ~/Library/Logs/sdcard-sync.log

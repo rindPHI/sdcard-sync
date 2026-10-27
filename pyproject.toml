@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sdcard-sync"
 version = "1.0.0"
-description = "Gleicht einen lokalen Ordner mit der SD-Karte eines Android-Geräts ab (über adb)"
+description = "Synchronize a local directory with the SD card of an Android device over adb"
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"

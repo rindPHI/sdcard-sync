@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Dominic Steinhöfel
-"""Vergleichs- und Planungslogik, unabhängig von adb und vom Dateisystem."""
+"""Comparison and planning logic, independent of adb and of the filesystem."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ BATCH_BYTES = 2 * 1024**3
 
 @dataclass(frozen=True)
 class FileEntry:
-    """Eine lokale Datei mit ihrem Zielpfad relativ zur Quelle."""
+    """A local file together with its path relative to the source directory."""
 
     rel: str
     size: int
@@ -25,7 +25,7 @@ class FileEntry:
 
 @dataclass(frozen=True)
 class Batch:
-    """Eine Gruppe von Dateien, die in einem adb-Aufruf übertragen wird."""
+    """Files that are transferred in a single adb call."""
 
     dest: str
     files: tuple[FileEntry, ...]
@@ -36,10 +36,10 @@ class Batch:
 
 
 def scan_local(root: Path, skip_names: Iterable[str] = SKIP_NAMES) -> list[FileEntry]:
-    """Liest alle regulären Dateien unter *root* ein.
+    """Collect all regular files below *root*.
 
-    Verzeichnisse in *skip_names* werden komplett übersprungen, symbolische
-    Links und nicht lesbare Dateien ignoriert.
+    Directories listed in *skip_names* are skipped entirely. Symbolic links and
+    unreadable files are ignored.
     """
     skip = set(skip_names)
     root = Path(root)
@@ -69,7 +69,7 @@ def missing_files(
     local_entries: Sequence[FileEntry],
     remote_sizes: dict[str, int],
 ) -> list[FileEntry]:
-    """Dateien, die auf dem Ziel fehlen oder eine andere Größe haben."""
+    """Files that are absent on the target or have a different size."""
     return [entry for entry in local_entries if remote_sizes.get(entry.rel) != entry.size]
 
 
@@ -78,7 +78,7 @@ def plan_batches(
     max_files: int = BATCH_FILES,
     max_bytes: int = BATCH_BYTES,
 ) -> list[Batch]:
-    """Gruppiert Dateien nach Zielordner und zerlegt sie in handliche Pakete."""
+    """Group files by target directory and split them into transferable batches."""
     grouped: dict[str, list[FileEntry]] = {}
     for entry in entries:
         grouped.setdefault(os.path.dirname(entry.rel), []).append(entry)
